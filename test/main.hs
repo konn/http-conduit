@@ -11,7 +11,7 @@ import Network.HTTP.Types
 import Control.Exception.Lifted (try, SomeException)
 import Network.HTTP.Conduit.ConnInfo
 import CookieTest (cookieTest)
-import Data.Conduit.Network (runTCPServer, ServerSettings (..))
+import Data.Conduit.Network (runTCPServer, ServerSettings (..), HostPreference (HostAny))
 import Data.Conduit (($$))
 import Control.Monad.Trans.Resource (register)
 import Control.Monad.IO.Class (liftIO)
@@ -66,7 +66,7 @@ main = hspecX $ do
                     _ -> error "Shouldn't have worked"
 
 overLongHeaders :: IO ()
-overLongHeaders = runTCPServer (ServerSettings 3004 Nothing) $ \_ sink ->
+overLongHeaders = runTCPServer (ServerSettings 3004 HostAny) $ \_ sink ->
     src $$ sink
   where
     src = sourceList $ "HTTP/1.0 200 OK\r\nfoo: " : repeat "bar"
