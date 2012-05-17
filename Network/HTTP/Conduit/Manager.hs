@@ -38,7 +38,9 @@ import Control.Monad.Trans.Resource
     , MonadThrow, MonadUnsafeIO
     )
 import Control.Concurrent (forkIO, threadDelay)
-import Data.Time (UTCTime, getCurrentTime, addUTCTime)
+import Data.Time (DiffTime, UTCTime(..), getCurrentTime, addUTCTime)
+import Data.Time.Calendar 
+import Control.DeepSeq
 
 import Network (connectTo, PortID (PortNumber), HostName)
 import Network.Socket (socketToHandle)
@@ -161,7 +163,7 @@ reap mapRef certCacheRef =
             Nothing -> return () -- manager is closed
             Just toDestroy -> do
                 mapM_ safeConnClose toDestroy
-                I.atomicModifyIORef certCacheRef $ \x -> (flushStaleCerts now x, ())
+                I.atomicModifyIORef certCacheRef $ \x -> let y = flushStaleCerts now x in y `deepseq` (y, ())
                 loop
     findStaleWrap _ Nothing = (Nothing, Nothing)
     findStaleWrap isNotStale (Just m) =
@@ -193,6 +195,15 @@ reap mapRef certCacheRef =
         flushStaleCerts'' (certs, expires)
             | expires > now = Just (certs, expires)
             | otherwise     = Nothing
+
+instance NFData S8.ByteString
+instance NFData L.ByteString where
+    rnf a = L.length a `seq` ()
+instance NFData UTCTime where
+    rnf (UTCTime day dt) = rnf day `seq` rnf dt `seq` ()
+instance NFData Day where
+    rnf (ModifiedJulianDay i) = rnf i `seq` ()
+instance NFData DiffTime
 
 neToList :: NonEmptyList a -> [(UTCTime, a)]
 neToList (One a t) = [(t, a)]
